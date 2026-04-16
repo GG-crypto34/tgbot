@@ -1,5 +1,4 @@
 TOKEN = "8794465943:AAFNHtBInP_u0K8RMM3f1c6SSb8-dA96GxE"
-
 import logging
 from pathlib import Path
 
@@ -95,7 +94,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
-
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("find", find_command)],
         states={

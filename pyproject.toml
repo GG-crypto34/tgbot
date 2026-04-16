@@ -1,0 +1,10 @@
+[project]
+name = "features-agent"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain-gigachat>=0.3.0",
+    "gigachat>=0.1.40",
+    "python-dotenv>=1.0.0",
+    "python-telegram-bot"
+]
