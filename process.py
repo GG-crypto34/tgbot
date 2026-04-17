@@ -1,24 +1,33 @@
 from pathlib import Path
-from gigachatbl import build_gigachat
+import base64
+from langchain_openai import ChatOpenAI
+
+# Инициализация модели (как у тебя)
+llm = ChatOpenAI(
+    openai_api_base="https://api.mistral.ai/v1",
+    model="mistral-large-latest",
+    api_key="ZvMLZdits0HwToXTM3E9NopLVyQgImAs",
+    temperature=0
+)
+
 
 def build_prompt(user_text: str = "") -> str:
     base_prompt = (
         "Ты исторический ассистент. "
         "Проанализируй изображение и определи, изображена ли на нем значимая историческая личность. "
-        "Если да, назови ее, кратко объясни, по каким визуальным признакам ты это понял, "
-        "и дай важную биографическую справку: годы жизни, страна, роль в истории, главные достижения. "
-        "Если на изображении нельзя уверенно определить личность, так и скажи. "
-        "Не выдумывай факты. "
-        "Ответ дай на русском языке."
+        "Если да, назови ее и дай краткую биографию. "
+        "Если нет — так и скажи. Не выдумывай."
     )
 
     if user_text.strip():
-        return (
-            f"{base_prompt}\n\n"
-            f"Дополнительный текст от пользователя:\n{user_text.strip()}"
-        )
+        return base_prompt + "\n\nТекст пользователя:\n" + user_text
 
     return base_prompt
+
+
+def encode_image(image_path: str) -> str:
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
 
 def process_image(image_path: str, text: str = "") -> str:
@@ -27,33 +36,22 @@ def process_image(image_path: str, text: str = "") -> str:
         return "Ошибка: изображение не найдено."
 
     prompt = build_prompt(text)
-    client = build_gigachat({})
+    image_base64 = encode_image(image_path)
 
-    with open(path, "rb") as f:
-        uploaded = client.upload_file(f, purpose="general")
+    # Mistral multimodal формат
+    message = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": f"data:image/jpeg;base64,{image_base64}"
+                },
+            ],
+        }
+    ]
 
-    file_id = getattr(uploaded, "id", None) or getattr(uploaded, "id_", None)
+    response = llm.invoke(message)
 
-    response = client.chat({
-        "messages": [
-            {
-                "role": "system",
-                "content": "Ты помогаешь распознавать исторических личностей по изображениям."
-            },
-            {
-                "role": "user",
-                "content": prompt,
-                "attachments": [file_id]
-            }
-        ]
-    })
-
-    try:
-        client.delete_file(file_id)
-    except Exception:
-        pass
-
-    if isinstance(response, dict):
-        return response["choices"][0]["message"]["content"]
-
-    return response.choices[0].message.content
+    return response.content
